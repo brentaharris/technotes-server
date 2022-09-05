@@ -9,10 +9,10 @@ const { response } = require('express')
 // @access Private
 const getAllUsers = asyncHandler(async (req, res) => {
     const users = await User.find().select('-password').lean()
-    if (!users) {
+    if (!users?.length) {
         return res.status(400).json({ message: 'No users found' })
     }
-    response.json(users)
+    res.json(users)
 })
 
 // @desc Create new user
@@ -22,7 +22,7 @@ const createNewUser = asyncHandler(async (req, res) => {
     const { username, password, roles } = req.body
     //confirm data
     if (!username || !password || !Array.isArray(roles) || !roles.length) {
-        return response.status(400).json({ message: 'All fields are required' })
+        return res.status(400).json({ message: 'All fields are required' })
     }
     //check for duplicates
     const duplicate = await User.findOne({ username }).lean().exec()
@@ -36,9 +36,9 @@ const createNewUser = asyncHandler(async (req, res) => {
     //create and store new user
     const user = await User.create(userObject)
     if(user) {
-        res.status(201).json({ message: `New user ${username} created`})
+        return res.status(201).json({ message: `New user ${username} created`})
     } else {
-        res.status(400).json({ message: 'Invalid user data received' })
+        return res.status(400).json({ message: 'Invalid user data received' })
     }
 
 })
@@ -73,8 +73,8 @@ const updateUser = asyncHandler(async (req, res) => {
         //Hash password
         user.password = await bcrypt.hash(password, 10) //salt rounds
     }
-    const updatedUser = await User.save()
-    res.json({ message: `Updated ${user.username} successfully`})
+    const updatedUser = await user.save()
+    res.json({ message: `Updated ${updatedUser.username} successfully`})
 })
 
 // @desc Delete a user
@@ -86,8 +86,8 @@ const deleteUser = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: 'User ID is Required' })
     }
 
-    const notes = await Note.findOne({ user: id }).lean().exec()
-    if (notes?.length) {
+    const note = await Note.findOne({ user: id }).lean().exec()
+    if (note) {
         return res.status(400).json({ message: `User has assigned notes`})
     }
 
@@ -96,7 +96,7 @@ const deleteUser = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: 'User not found' })
     }
 
-    const result = await User.deleteOne()
+    const result = await user.deleteOne()
     const reply = `Username ${result.username} with ID ${result._id} deleted`
     res.json(reply)
 })
